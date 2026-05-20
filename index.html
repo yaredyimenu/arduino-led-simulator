@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Arduino LED Simulator</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      background: #1a1a2e;
+      color: #e0e0e0;
+      font-family: 'Courier New', monospace;
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 28px;
+    }
+
+    header h1 { font-size: 1.1rem; color: #00e5ff; letter-spacing: 2px; }
+
+    .badge {
+      background: #00e5ff22;
+      color: #00e5ff;
+      font-size: 0.7rem;
+      padding: 4px 10px;
+      border-radius: 20px;
+      border: 1px solid #00e5ff44;
+      animation: blink 2s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Board */
+    .board {
+      background: #0d7a3e;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 24px;
+      border: 2px solid #0a5c2e;
+      box-shadow: 0 8px 32px #00000066;
+      position: relative;
+    }
+
+    .board-label {
+      font-size: 0.65rem;
+      color: #ffffff88;
+      margin-bottom: 16px;
+      letter-spacing: 3px;
+    }
+
+    .leds-row {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin-bottom: 20px;
+    }
+
+    .led-unit {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .led {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: #333;
+      border: 3px solid #555;
+      cursor: pointer;
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .led.on {
+      border-color: transparent;
+      box-shadow: 0 0 16px 6px var(--glow), 0 0 40px 10px var(--glow-soft);
+      background: var(--color);
+    }
+
+    .led-pin {
+      font-size: 0.65rem;
+      color: #ffffff88;
+      letter-spacing: 1px;
+    }
+
+    .led-color-label {
+      font-size: 0.65rem;
+      color: #fff;
+      background: #00000033;
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    /* Pin strip */
+    .pin-strip {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .pin {
+      background: #c8a600;
+      width: 10px;
+      height: 10px;
+      border-radius: 2px;
+    }
+
+    /* Controls */
+    .controls {
+      background: #16213e;
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 20px;
+      border: 1px solid #0f3460;
+    }
+
+    .controls h2 {
+      font-size: 0.75rem;
+      color: #00e5ff;
+      letter-spacing: 2px;
+      margin-bottom: 16px;
+    }
+
+    .toggle-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      flex: 1;
+      min-width: 80px;
+      padding: 10px 6px;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Courier New', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid #333;
+      background: #1a1a2e;
+      color: #aaa;
+    }
+
+    .btn.active {
+      color: #fff;
+      border-color: var(--btn-color);
+      background: var(--btn-color)33;
+      box-shadow: 0 0 10px var(--btn-color)55;
+    }
+
+    .pwm-section { margin-top: 4px; }
+
+    .pwm-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: #888;
+      margin-bottom: 8px;
+    }
+
+    .pwm-value { color: #00e5ff; font-weight: bold; }
+
+    input[type="range"] {
+      width: 100%;
+      appearance: none;
+      height: 4px;
+      background: #333;
+      border-radius: 2px;
+      outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+      appearance: none;
+      width: 18px; height: 18px;
+      background: #00e5ff;
+      border-radius: 50%;
+      cursor: pointer;
+    }
+
+    /* Serial Monitor */
+    .serial {
+      background: #0a0a0a;
+      border-radius: 12px;
+      padding: 16px;
+      border: 1px solid #00e5ff33;
+    }
+
+    .serial-header {
+      font-size: 0.7rem;
+      color: #00e5ff;
+      letter-spacing: 2px;
+      margin-bottom: 10px;
+    }
+
+    .serial-log {
+      height: 120px;
+      overflow-y: auto;
+      font-size: 0.72rem;
+      color: #00e5ff;
+      line-height: 1.8;
+    }
+
+    .serial-log span { display: block; }
+    .serial-log .dim { color: #444; }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>⚡ ARDUINO SIMULATOR</h1>
+  <span class="badge">● RUNNING</span>
+</header>
+
+<!-- Board -->
+<div class="board">
+  <div class="board-label">ARDUINO UNO R3</div>
+
+  <div class="leds-row" id="ledsRow"></div>
+
+  <div class="pin-strip">
+    <div class="pin"></div><div class="pin"></div>
+    <div class="pin"></div><div class="pin"></div>
+    <div class="pin"></div><div class="pin"></div>
+    <div class="pin"></div><div class="pin"></div>
+    <div class="pin"></div><div class="pin"></div>
+    <div class="pin"></div><div class="pin"></div>
+  </div>
+</div>
+
+<!-- Controls -->
+<div class="controls">
+  <h2>// DIGITAL PINS</h2>
+  <div class="toggle-row" id="toggleRow"></div>
+
+  <div class="pwm-section">
+    <div class="pwm-label">
+      <span>PWM Brightness (Pin ~9)</span>
+      <span class="pwm-value" id="pwmDisplay">128 / 255</span>
+    </div>
+    <input type="range" min="0" max="255" value="128" id="pwmSlider" oninput="updatePWM(this.value)"/>
+  </div>
+</div>
+
+<!-- Serial Monitor -->
+<div class="serial">
+  <div class="serial-header">▶ SERIAL MONITOR — 9600 baud</div>
+  <div class="serial-log" id="serialLog">
+    <span class="dim">// Waiting for input...</span>
+  </div>
+</div>
+
+<script>
+  const leds = [
+    { label: 'RED',    pin: 'D2', color: '#ff4444', glow: '#ff000099', soft: '#ff000033' },
+    { label: 'GREEN',  pin: 'D3', color: '#44ff88', glow: '#00ff6699', soft: '#00ff4433' },
+    { label: 'BLUE',   pin: 'D4', color: '#4488ff', glow: '#0044ff99', soft: '#0044ff33' },
+    { label: 'YELLOW', pin: 'D5', color: '#ffdd44', glow: '#ffcc0099', soft: '#ffcc0033' },
+  ];
+
+  const state = leds.map(() => false);
+  let pwm = 128;
+
+  function renderBoard() {
+    const row = document.getElementById('ledsRow');
+    row.innerHTML = leds.map((led, i) => `
+      <div class="led-unit">
+        <div class="led-color-label">${led.label}</div>
+        <div class="led ${state[i] ? 'on' : ''}" id="led${i}"
+          style="--color:${led.color}; --glow:${led.glow}; --glow-soft:${led.soft}"
+          onclick="toggleLED(${i})">
+        </div>
+        <div class="led-pin">${led.pin}</div>
+      </div>
+    `).join('');
+  }
+
+  function renderButtons() {
+    const row = document.getElementById('toggleRow');
+    row.innerHTML = leds.map((led, i) => `
+      <button class="btn ${state[i] ? 'active' : ''}" id="btn${i}"
+        style="--btn-color:${led.color}"
+        onclick="toggleLED(${i})">
+        ${led.label}<br/>${state[i] ? 'HIGH' : 'LOW'}
+      </button>
+    `).join('');
+  }
+
+  function toggleLED(i) {
+    state[i] = !state[i];
+    renderBoard();
+    renderButtons();
+    log(`digitalWrite(${leds[i].pin}, ${state[i] ? 'HIGH' : 'LOW'}); // ${leds[i].label} LED`);
+  }
+
+  function updatePWM(val) {
+    pwm = val;
+    document.getElementById('pwmDisplay').textContent = `${val} / 255`;
+    log(`analogWrite(9, ${val}); // PWM = ${Math.round(val/255*100)}%`);
+  }
+
+  function log(msg) {
+    const monitor = document.getElementById('serialLog');
+    const line = document.createElement('span');
+    const time = new Date().toLocaleTimeString();
+    line.textContent = `[${time}] ${msg}`;
+    monitor.appendChild(line);
+    monitor.scrollTop = monitor.scrollHeight;
+  }
+
+  renderBoard();
+  renderButtons();
+  log('setup() complete. Loop running...');
+</script>
+
+</body>
+  </html>
